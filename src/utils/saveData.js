@@ -7,7 +7,7 @@ async function saveUserData(userData) {
     let data = {};
 
     try {
-        const rawData = fs.readFileSync('./data/job_data.json', 'utf8');
+        const rawData = fs.readFileSync('./src/data/job_data.json', 'utf8');
         data = JSON.parse(rawData);
     } catch (error) {
         console.log('Aucune donnée existante ou erreur de lecture :', error);
