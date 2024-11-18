@@ -38,24 +38,15 @@ module.exports = {
         const achievements = loadAchievements();
         const userAchievements = loadUserAchievements();
 
-        // Créer un embed pour afficher les succès
-        const embed = new EmbedBuilder()
-            .setColor('#00ff00')
-            .setTitle(`Succès de ${interaction.user.username}`)
-            .setDescription("Liste des succès disponibles. Les succès non obtenus sont marqués avec ⬛.");
+        // Initialiser une chaîne pour contenir les succès
+        let response = '';
 
-        // Parcourir chaque succès dans achievement_list (qui est maintenant un tableau)
+        // Parcourir chaque succès dans achievements (qui est un tableau)
         for (const achievement of achievements) {
             const hasAchievement = userAchievements[userId]?.some(ach => ach.name === achievement.name);
 
-            // Affiche l'emoji lié ou un carré noir si l'utilisateur ne possède pas le succès
-            embed.addFields({
-                name: `${hasAchievement ? achievement.emoji : '⬛'} ${achievement.name}`,
-                value: achievement.description,
-                inline: false
-            });
+            response += ` ${hasAchievement ? achievement.emoji : '⬛'}`;
         }
-
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply(response);
     }
 };

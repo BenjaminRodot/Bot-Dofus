@@ -3,6 +3,9 @@ const path = require('node:path');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 
+const successChannelID = '1306076291551858769';
+const userAchievementsFilePath = path.join(__dirname, 'data/user_achievements.json');
+
 // Configuration et initialisation du client
 const client = new Client({
 	intents: [
@@ -45,21 +48,10 @@ for (const file of eventFiles) {
 	}
 }
 
-// Charger les messages enregistrés
-const loadSuccessMessages = () => {
-    console.log("succe load");
-    try {
-        const data = fs.readFileSync('data/success_messages.json', 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        return {};  // Si le fichier n'existe pas, renvoie un objet vide
-    }
-};
-
 // Charger les succès enregistrés et leurs messages
 const loadUserAchievements = () => {
     try {
-        const data = fs.readFileSync('data/user_achievements.json', 'utf8');
+        const data = fs.readFileSync(userAchievementsFilePath, 'utf8');
         return JSON.parse(data);
     } catch (error) {
         return {};
@@ -67,58 +59,70 @@ const loadUserAchievements = () => {
 };
 
 // Sauvegarder les succès des utilisateurs
-const saveUserAchievements = (userId, achievements) => {
-    const data = loadUserAchievements();
-    data[userId] = achievements;
-    fs.writeFileSync('data/user_achievements.json', JSON.stringify(data, null, 2));
+const saveUserAchievements = (achievements) => { 
+    fs.writeFileSync(userAchievementsFilePath, JSON.stringify(achievements, null, 2));
 };
 
-// Fonction pour gérer l'ajout ou la suppression des réactions
-const handleReaction = (reaction, user, add) => {
-    const userId = user.id;
-    const successName = reaction.message.embeds[0].title; // Nom du succès à partir du titre du message
+// Reaction Succés
+client.on('raw', async (packet) => {
+    // Vérifie si l'événement concerne une réaction ajoutée ou supprimée
+    if (!['MESSAGE_REACTION_ADD', 'MESSAGE_REACTION_REMOVE'].includes(packet.t)) return;
 
-    let userAchievements = loadUserAchievements();
+    // Vérifie si le canal correspond au canal autorisé
+    const channel = await client.channels.fetch(packet.d.channel_id);
+    if (!channel || channel.id !== successChannelID) return;
 
-    if (add) {
-        // Ajouter le succès à l'utilisateur
-        if (!userAchievements[userId]) {
-            userAchievements[userId] = [];
+    try {
+        // Récupère le message depuis Discord (et force le rechargement si déjà en cache)
+        const message = await channel.messages.fetch(packet.d.message_id, { cache: true });
+
+        // Met le message dans le cache
+        channel.messages.cache.set(message.id, message);
+
+        // Revalide les réactions pour le message
+        await message.fetch(true);
+
+        const userId = packet.d.user_id;
+        const user = await client.users.fetch(userId);
+
+        // Construit l'emoji à partir des données du paquet
+        const emoji = packet.d.emoji.id
+            ? `${packet.d.emoji.name}:${packet.d.emoji.id}`
+            : packet.d.emoji.name;
+
+        // Obtient la réaction à partir du message
+        const reaction = message.reactions.cache.get(emoji);
+
+        // Émet l'événement correspondant
+        const userAchievements = loadUserAchievements();
+        const name = message.embeds[0]?.title; // Vérifie si l'embed existe
+        const description = message.embeds[0]?.description;
+
+        if (!name || !description) {
+            console.warn('Le message ne contient pas d’embed valide pour traiter les succès.');
+            return;
         }
-        userAchievements[userId].push(successName);
-    } else {
-        // Retirer le succès de l'utilisateur
-        userAchievements[userId] = userAchievements[userId].filter(ach => ach !== successName);
-    }
 
-    // Sauvegarder les données des utilisateurs
-    saveUserAchievements(userId, userAchievements[userId]);
-};
-
-// Réagir aux événements de réaction
-client.on('messageReactionAdd', (reaction, user) => {
-    if (user.bot) return;  // Ignorer les réactions des bots
-
-    // Vérifiez si ce message fait partie des messages de succès
-    const successMessages = loadSuccessMessages();
-    for (const successName in successMessages) {
-        if (reaction.message.id === successMessages[successName]) {
-            handleReaction(reaction, user, true);
-            break;
+        if (packet.t === 'MESSAGE_REACTION_ADD') {
+            console.log("add");
+            if (!userAchievements[user.id]) {
+                userAchievements[user.id] = [];
+            }
+            if (!userAchievements[user.id].find(ach => ach.name === name)) {
+                userAchievements[user.id].push({ name, description, emoji });
+                saveUserAchievements(userAchievements);
+                console.log(`Succès "${name}" ajouté pour l'utilisateur ${user.username}.`);
+            }
+        } else if (packet.t === 'MESSAGE_REACTION_REMOVE') {
+            console.log("remove");
+            if (userAchievements[user.id]) {
+                userAchievements[user.id] = userAchievements[user.id].filter(ach => ach.name !== name);
+                saveUserAchievements(userAchievements);
+                console.log(`Succès "${name}" retiré pour l'utilisateur ${user.username}.`);
+            }
         }
-    }
-});
-
-client.on('messageReactionRemove', (reaction, user) => {
-    if (user.bot) return;  // Ignorer les réactions des bots
-
-    // Vérifiez si ce message fait partie des messages de succès
-    const successMessages = loadSuccessMessages();
-    for (const successName in successMessages) {
-        if (reaction.message.id === successMessages[successName]) {
-            handleReaction(reaction, user, false);
-            break;
-        }
+    } catch (error) {
+        console.error('Erreur lors de la récupération du message ou du traitement des réactions :', error);
     }
 });
 

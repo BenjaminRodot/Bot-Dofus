@@ -1,9 +1,15 @@
 {
   "337925023119704074": [
-    "test",
     {
-      "name": "test",
-      "description": "test",
+      "name": "Emeraude",
+      "description": "Emeraude",
+      "emoji": "DofusEmeraudep:1307762589681586287"
+    }
+  ],
+  "1305362146409971812": [
+    {
+      "name": "Noir",
+      "description": "noir",
       "emoji": "✅"
     }
   ]

@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\commands",
+    "\\src\\commands\\utility",
+    "\\src\\data",
+    "\\src\\utils"
+  ],
+  "SelectedNode": "\\src\\commands\\utility\\show_achievements.js",
+  "PreviewInSolutionExplorer": false
+}

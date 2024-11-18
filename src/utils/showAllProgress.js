@@ -2,7 +2,7 @@
 const { EmbedBuilder } = require('discord.js');
 
 const canalID = '1305640632278323323';
-const sentMessagesFilePath = 'src/data/sentMessages.json';
+const sentMessagesFilePath = 'data/sentMessages.json';
 
 // Charger les ID des messages sauvegardés
 const loadSentMessages = () => {
@@ -16,7 +16,7 @@ const loadSentMessages = () => {
 
 // Chargement des données utilisateurs
 const loadJobData = () => {
-    const data = fs.readFileSync('src/data/job_data.json', 'utf8');
+    const data = fs.readFileSync('data/job_data.json', 'utf8');
     return JSON.parse(data);
 };
 
